@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import User from '../models/user.model.js';
 
-export const signup = async (req, res) => {
+export const signup = async (req, res, next) => {
     const { username, email, password } = req.body;
 
     try {
@@ -9,7 +9,9 @@ export const signup = async (req, res) => {
         const existingUser = await User.findOne({ $or: [{ username }, { email }] });
 
         if (existingUser) {
-            return res.status(400).json({ message: 'Username or email already exists.' });
+            const error = new Error('Username or email already exists.');
+            error.statusCode = 400; // Bad request
+            throw error; // Trigger the error middleware
         }
 
         // Hash the password before saving the user
@@ -29,14 +31,7 @@ export const signup = async (req, res) => {
         res.status(201).json({ message: 'User created successfully!' });
 
     } catch (error) {
-        console.error(error);
-
-        if (error.code === 11000) {
-            // Handle duplicate key error
-            res.status(400).json({ message: 'Duplicate key error: Username or email already exists.' });
-        } else {
-            // Handle other errors
-            res.status(500).json({ message: 'Something went wrong on the server.' });
-        }
+        // Pass the error to the middleware for centralized error handling
+        next(error);
     }
 };
